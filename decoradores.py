@@ -83,13 +83,13 @@ def signaltimeout(timeout, func, *args, **kwargs):
     def handler(snum, frame):
         raise TimeoutExc
   
-    old = signal.signal(signal.SALRM, handler)
+    old = signal.signal(signal.SIGALRM, handler)
     signal.alarm(timeout)
 
     try:
         result = func(*args, **kwargs)
     finally:
-        signal.signal(signal.SALRM, old)
+        signal.signal(signal.SIGALRM, old)
 
     signal.alarm(0)
 
