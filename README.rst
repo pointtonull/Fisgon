@@ -1,13 +1,11 @@
 Description
 ===========
 
-A simple script that will try to find parralell accounts. i.e. anothers
-service accounts of a same user with the same password.
+A simple script that will try to find same access accounts. i.e. different service accounts with a same user and password.
 
-Colabore
+Colaborate
 ========
 
-You are free to clone this project from http://github.com/pointtonull/Tokuah or
-to report issues/whises on http://github.com/pointtonull/Tokuah/issues .
+You are free to clone this project from http://github.com/pointtonull/fisgon.git or to report issues/whises on http://github.com/pointtonull/fisgon/issues 
 
 .. _Python: http://www.python.org/
