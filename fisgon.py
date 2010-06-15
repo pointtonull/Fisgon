@@ -157,7 +157,7 @@ def gmail(user, password):
     if ismail(user):
         smtp = smtplib.SMTP()
         try:
-            smtp.connect("smtp.gmail.com")
+            smtp.connect("smtp.gmail.com", 587)
             smtp.ehlo()
             smtp.starttls()
             smtp.debuglevel = 0
