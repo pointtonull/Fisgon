@@ -207,7 +207,7 @@ def yahoo(user, password):
     if ismail(user) and "@yahoo." in user:
         smtp = smtplib.SMTP()
         try:
-            smtp.connect("smtp.mail.yahoo.com")
+            smtp.connect("smtp.mail.yahoo.com", 587)
             smtp.debuglevel = 0
             smtp.ehlo()
             try:
