@@ -182,7 +182,7 @@ def live(user, password):
     if ismail(user):
         smtp = smtplib.SMTP()
         try:
-            smtp.connect("smtp.live.com")
+            smtp.connect("smtp.live.com", 587)
             smtp.ehlo()
             smtp.starttls()
             smtp.debuglevel = 0
