@@ -36,15 +36,17 @@ def log(func):
         result = func(*args, **kwargs)
         if result:
             write(";".join(args), func.func_name + ".txt")
-        else:
+        elif result is not None:
             write(";".join(args), "no-" + func.func_name + ".txt")
+        else:
+            write(";".join(args), "none-" + func.func_name + ".txt")
 
     return dfunc
 
 
 def read(filename):
     try:
-        pairs = [line.strip().split(";")
+        pairs = [tuple(line.strip().split(";"))
             for line in open(filename).readlines()]
     except IOError:
         pairs = []
@@ -53,8 +55,8 @@ def read(filename):
 
 
 def filter(func):
-    trues = read(func.func_name + ".txt")
-    falses = read("no-" + func.func_name + ".txt")
+    trues = set(read(func.func_name + ".txt"))
+    falses = set(read("no-" + func.func_name + ".txt"))
 
     @wraps(func)
     def dfunc(*args, **kwargs):
