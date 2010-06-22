@@ -278,7 +278,7 @@ def get_depth():
 
         middle = (minn + maxn) / 2
   
-    return max(minn - 4, 0)
+    return max(minn - 4, 0) #4 == len(main, module, Verbose, get_depth)
 
 def relpath(path):
     return os.path.abspath(path).replace(os.path.commonprefix(
