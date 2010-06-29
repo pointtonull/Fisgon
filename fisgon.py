@@ -10,8 +10,8 @@ import os
 import re
 import smtplib
 import socket
-import sys
 import time
+import sys
 
 RC = "%s/.fisgon/" % os.getenv("HOME")
 VERBOSE = 0
@@ -190,8 +190,8 @@ def gmail(user, password):
                 return False
             except socket.sslerror:
                 return False
-        except socket.gaierror or smtplib.SMTPServerDisconnected:
-            debug("E: Server disconnected")
+        except socket.gaierror:
+            debug("E: socket.gaierror")
             return None
     else:
         return False
@@ -252,12 +252,13 @@ def yahoo(user, password):
 
 def main():
     debug("FUN TIME!")
-    entrada = sys.stdin.readlines()
+    
+    stdin = sys.stdin.readlines()
 
     threads = 40
     pause = .1
     slots = [None] * threads
-    for line in entrada:
+    for line in stdin:
         user, password = line.strip().split(";")[:2]
         user = user.lower()
 

@@ -299,12 +299,14 @@ def Verbose(level=1):
             result = func(*args, **kwargs)
 
             if level >= 4:
-                debug("%s< %s: %s" % (" " * get_depth(), func.func_name,
-                    result))
-            elif level >= 2:
                 debug('%s< %s, file "%s", line %s' % (" " * get_depth(),
                     func.func_name, relpath(inspect.getfile(func)),
                     inspect.getsourcelines(func)[-1]))
+            elif level >= 3:
+                debug("%s< %s: %s" % (" " * get_depth(), func.func_name,
+                    result))
+            elif level >= 2:
+                debug('%s< %s' % (" " * get_depth(), func.func_name))
 
             return result
 

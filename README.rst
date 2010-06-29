@@ -1,3 +1,6 @@
+.. figure:: http://img30.imageshack.us/img30/6255/testingj.png
+   :align: right
+
 Description
 ===========
 
