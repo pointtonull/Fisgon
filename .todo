@@ -9,6 +9,9 @@
     <note priority="veryhigh" time="1277773988">
         fix async incompability
     </note>
+    <note priority="veryhigh" time="1277774272">
+        document!
+    </note>
     <note priority="high" time="1276570101" done="1277773920">
         implement initial run feature
         <comment>
