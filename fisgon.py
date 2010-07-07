@@ -13,6 +13,9 @@ import socket
 import time
 import sys
 
+import browser
+from browser import BrowserStateError
+
 RC = "%s/.fisgon/" % os.getenv("HOME")
 VERBOSE = 0
 
@@ -87,7 +90,6 @@ def ismail(user):
 @nothreadsafe
 def myspace(user, password):
     if ismail(user):
-        import browser
         b = browser.BROWSER()
         b.clear_cookies()
         form = b.get_forms("http://myspace.com")[1]
@@ -113,7 +115,6 @@ def myspace(user, password):
 @nothreadsafe
 def esdebian(user, password):
     if ismail(user):
-        import browser
         b = browser.BROWSER()
         b.clear_cookies()
         form = b.get_forms("http://www.esdebian.org")[1]
@@ -138,7 +139,6 @@ def esdebian(user, password):
 @nothreadsafe
 def paypal(user, password):
     if ismail(user):
-        import browser
         b = browser.BROWSER()
         b.clear_cookies()
         form = b.get_forms("https://www.paypal.com/ar/cgi-bin/webscr"
@@ -168,7 +168,6 @@ def paypal(user, password):
 @nothreadsafe
 def facebook(user, password):
     if ismail(user):
-        import browser
         b = browser.BROWSER()
         b.clear_cookies()
         form = b.get_forms("http://facebook.com")[0]
