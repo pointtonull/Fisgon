@@ -259,7 +259,7 @@ def main():
     
     stdin = sys.stdin.readlines()
 
-    threads = 7
+    threads = 5
     pause = .1
     slots = [None] * threads
     for line in stdin:
