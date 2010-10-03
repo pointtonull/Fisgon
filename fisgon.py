@@ -111,28 +111,28 @@ def myspace(user, password):
         return False
 
 
-@discovers
-@nothreadsafe
-def esdebian(user, password):
-    if ismail(user):
-        b = browser.BROWSER()
-        b.clear_cookies()
-        form = b.get_forms("http://www.esdebian.org")[1]
-        form["name"] = user
-        form["pass"] = password
-        try:
-            code, title = form.submit()
-            if code == 200:
-                if """<a href="/logout">Salir</a>""" in b.get_html():
-                    return "esdebian.org"
-                else:
-                    return False
-            else:
-                return None
-        except BrowserStateError:
-            return None
-    else:
-        return False
+#@discovers
+#@nothreadsafe
+#def esdebian(user, password):
+#    if ismail(user):
+#        b = browser.BROWSER()
+#        b.clear_cookies()
+#        form = b.get_forms("http://www.esdebian.org")[1]
+#        form["name"] = user
+#        form["pass"] = password
+#        try:
+#            code, title = form.submit()
+#            if code == 200:
+#                if """<a href="/logout">Salir</a>""" in b.get_html():
+#                    return "esdebian.org"
+#                else:
+#                    return False
+#            else:
+#                return None
+#        except BrowserStateError:
+#            return None
+#    else:
+#        return False
 
 
 @discovers

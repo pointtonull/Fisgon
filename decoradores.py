@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #-*- coding: UTF-8 -*-
-import cPickle
+import pickle
 import sys
 import os
 import time
@@ -21,18 +21,27 @@ from threading import Thread
 VERBOSE = False
 
 class Asyncobj(Thread):
-    def __init__(self, func, *args, **kw):
+    def __init__(self, func, *args, **kwargs):
         self.args = args
-        self.kw = kw
+        self.kwargs = kwargs
         self.func = func
         Thread.__init__(self)
         self.result = None
 
+
     def __call__(self):
         return self
 
+
+    def is_alive(self):
+        try:
+            return Thread.is_alive(self)
+        except AttributeError:
+            return Thread.isAlive(self)
+
+
     def run(self):
-        self.result = self.func(*self.args, **self.kw)
+        self.result = self.func(*self.args, **self.kwargs)
 
     def get_result(self, timeout=None):
         self.join(timeout)
@@ -50,6 +59,7 @@ class Async:
 
     def __repr__(self):
         return self.func.func_name
+
 
 def nothreadsafe(func):
 
@@ -166,7 +176,7 @@ class Cache:
         if ruta:
             try:
                 f = open(self.ruta, "rb")
-                self.cache = cPickle.load(f)
+                self.cache = pickle.load(f)
                 f.close()
             except IOError:
                 self.cache = {}
@@ -217,12 +227,12 @@ class Cache:
         if self.ruta:
             try:
                 f = open(self.ruta, "rb")
-                self.cache = cPickle.load(f)
+                self.cache = pickle.load(f)
                 f.close()
             except:
                 if VERBOSE: debug("Error en lectura del cache")
             f = open(self.ruta, "wb")
-            cPickle.dump(self.cache, f, -1)
+            pickle.dump(self.cache, f, -1)
             f.flush()
             f.close()
             if VERBOSE: debug("Cache escrito exitosamente en %s" % self.ruta)
@@ -254,20 +264,26 @@ class Timeit:
 
 class Retry:
 
-    def __init__(self, attempts=5, retry_on=None):
+    def __init__(self, attempts=5, retry_on=None, pause=5):
         self.attempts = attempts
         self.retry_on = retry_on
+        self.pause = pause
 
     def __call__(self, func):
         def call(*args, **kwargs):
-            count = 0
-            result = self.retry_on
-            while count < self.attempts and result == self.retry_on:
-                count += 1
-                result = func(*args)
-                if result is None and VERBOSE:
-                    debug(" Retry %d: %s %s" % (
-                        count, func.func_name, result))
+            for attempt in xrange(self.attempts):
+                result = func(*args, **kwargs)
+
+                if result != self.retry_on:
+                    return result
+
+                if VERBOSE:
+                    debug(" Retry %d: %s(*%s)" % (attempt, func.func_name,
+                        args))
+                time.sleep(self.pause)
+            else:
+                debug(" Failed %s(*%s, **%s)" % (func.func_name, args, kwargs))
+
             return result
         return call
 
@@ -389,7 +405,7 @@ def main():
         else: return fibonar(n - 1) + fibonar(n - 2)
 
 
-    print fibonar(500)
+    print(fibonar(500))
 
 if __name__ == "__main__":
     exit(main())
