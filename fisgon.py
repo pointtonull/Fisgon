@@ -226,6 +226,8 @@ def live(user, password):
                 return False
             except socket.sslerror:
                 return False
+            except smtplib.SMTPServerDisconnected:
+                return None
         except socket.gaierror:
             debug("E: socket.gaierror")
             return None
