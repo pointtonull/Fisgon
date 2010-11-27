@@ -79,6 +79,19 @@ def nothreadsafe(func):
     return dfunc
 
 
+def Indeterminado(fallback=0):
+    def decorador(funcion):
+        def decorada(*args, **kwargs):
+            try:
+                result = funcion(*args, **kwargs)
+            except RuntimeError:
+                result = 0
+            return result
+
+        return decorada
+
+    return decorador
+
 
 class TimeoutExc(Exception):
     def __init__(self, value="Timed Out"):
@@ -113,7 +126,7 @@ def mptimeout(timeout, func, *args, **kwargs):
 def signaltimeout(timeout, func, *args, **kwargs):
     def handler(snum, frame):
         raise TimeoutExc
-  
+
     old = signal.signal(signal.SIGALRM, handler)
     signal.alarm(timeout)
 
@@ -306,7 +319,7 @@ def get_depth():
 
     # minn =< depth < maxn
     middle = (minn + maxn) / 2
-  
+
     while minn < middle:
         if exist_frame(middle):
             minn = middle
@@ -314,35 +327,35 @@ def get_depth():
             maxn = middle
 
         middle = (minn + maxn) / 2
-  
+
     return max(minn - 4, 0) #4 == len(main, module, Verbose, get_depth)
 
 def relpath(path):
     return os.path.abspath(path).replace(os.path.commonprefix(
         (os.path.abspath(os.path.curdir), os.path.abspath(path))), "")
 
-def Verbose(level=1):
+def Verbose(calling=1, returning=0):
 
     def decorador(func):
         @wraps(func)
         def dfunc(*args, **kwargs):
 
-            if level >= 3:
+            if calling > 1:
                 debug("%s> %s(%s, %s)" % (" " * get_depth(), func.func_name,
                     args, kwargs))
-            elif level >= 1:
+            elif calling > 0:
                 debug("%s> %s" % (" " * get_depth(), func.func_name))
 
             result = func(*args, **kwargs)
 
-            if level >= 4:
+            if returning > 2:
                 debug('%s< %s, file "%s", line %s' % (" " * get_depth(),
                     func.func_name, relpath(inspect.getfile(func)),
                     inspect.getsourcelines(func)[-1]))
-            elif level >= 3:
+            elif returning > 1:
                 debug("%s< %s: %s" % (" " * get_depth(), func.func_name,
                     result))
-            elif level >= 2:
+            elif returning > 0:
                 debug('%s< %s' % (" " * get_depth(), func.func_name))
 
             return result
