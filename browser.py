@@ -4,7 +4,7 @@ import os
 import webbrowser
 import time
 import urllib2
-import ClientForm
+import mechanize
 import cPickle
 
 from tempfile import mkdtemp
@@ -146,7 +146,7 @@ class BROWSER:
         f = StringIO()
         f.writelines(self.get_html(url, *args, **kw))
         f.seek(0)
-        forms = ClientForm.ParseFile(f, url, backwards_compat=False)
+        forms = mechanize.ParseFile(f, url, backwards_compat=False)
 
         return [FORM(self, f) for f in forms]
 
